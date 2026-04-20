@@ -1,4 +1,8 @@
-# Binaries
+# =============================================================================
+# .gitignore — FAANG-Grade E-Commerce Platform
+# =============================================================================
+
+# ---- Go Build Artifacts ----
 *.exe
 *.exe~
 *.dll
@@ -8,28 +12,68 @@
 *.o
 *.a
 *.out
+*.test
 
-# IDE
+# ---- Go Modules ----
+go.sum
+vendor/
+
+# ---- IDE ----
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.DS_Store
+Thumbs.db
 
-# Go
-go.sum
-vendor/
-
-# Environment
+# ---- Environment & Secrets ----
+# CRITICAL: Never commit secrets (BRD Section 10.3)
 .env
 .env.local
-
-# Database
-*.sql.bak
+.env.production
+.env.staging
 *.pem
+*.key
+*.crt
+*.p12
+*.jks
 
-# Logs
-*.log
+# ---- Terraform ----
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
 
-# Docker
+# ---- Kubernetes ----
+kubeconfig
+*.kubeconfig
+
+# ---- Docker ----
 .docker/
+docker-compose.override.yml
+
+# ---- Database ----
+*.sql.bak
+*.dump
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- Test Artifacts ----
+coverage.out
+coverage.html
+load-test-results.json
+test-results/
+
+# ---- Build Output ----
+dist/
+build/
+bin/
+
+# ---- OS-Specific ----
+.DS_Store
+Thumbs.db
+desktop.ini

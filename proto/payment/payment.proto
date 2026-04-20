@@ -1,0 +1,169 @@
+syntax = "proto3";
+
+package payment;
+
+option go_package = "digital-metro/ecomm_java/proto/payment;payment";
+
+// PaymentService handles all payment processing per BRD Section 5.2.
+// PCI-DSS Level 1 compliant: raw card data never touches application servers.
+// All card operations use tokenized references from Stripe/Braintree vault.
+service PaymentService {
+  // ProcessPayment creates a payment charge using a tokenized payment method.
+  // Idempotent: uses idempotency_key to prevent double charges (FR-PAY-001).
+  rpc ProcessPayment(ProcessPaymentRequest) returns (ProcessPaymentResponse);
+
+  // RefundPayment initiates a full or partial refund.
+  rpc RefundPayment(RefundPaymentRequest) returns (RefundPaymentResponse);
+
+  // GetPaymentStatus retrieves the current status of a payment.
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (GetPaymentStatusResponse);
+
+  // ScoreFraud runs real-time ML-based fraud scoring per FR-PAY-002.
+  // Target: < 50ms inference latency.
+  rpc ScoreFraud(FraudScoreRequest) returns (FraudScoreResponse);
+
+  // CreatePaymentMethod tokenizes and stores a payment method.
+  rpc CreatePaymentMethod(CreatePaymentMethodRequest) returns (CreatePaymentMethodResponse);
+
+  // ListPaymentMethods returns all saved payment methods for a user.
+  rpc ListPaymentMethods(ListPaymentMethodsRequest) returns (ListPaymentMethodsResponse);
+}
+
+// Enums for payment state machine
+enum PaymentStatus {
+  PAYMENT_STATUS_UNSPECIFIED = 0;
+  PAYMENT_PENDING = 1;
+  PAYMENT_PROCESSING = 2;
+  PAYMENT_SUCCEEDED = 3;
+  PAYMENT_FAILED = 4;
+  PAYMENT_REFUNDED = 5;
+  PAYMENT_PARTIALLY_REFUNDED = 6;
+  PAYMENT_DISPUTED = 7;
+}
+
+enum PaymentMethod {
+  PAYMENT_METHOD_UNSPECIFIED = 0;
+  CREDIT_CARD = 1;
+  DEBIT_CARD = 2;
+  UPI = 3;
+  NET_BANKING = 4;
+  BNPL = 5;            // Buy Now Pay Later
+  APPLE_PAY = 6;
+  GOOGLE_PAY = 7;
+  PAYPAL = 8;
+}
+
+enum Currency {
+  CURRENCY_UNSPECIFIED = 0;
+  USD = 1;
+  EUR = 2;
+  GBP = 3;
+  INR = 4;
+  JPY = 5;
+}
+
+// ---- Request/Response Messages ----
+
+message ProcessPaymentRequest {
+  string order_id = 1;
+  string user_id = 2;
+  double amount = 3;
+  Currency currency = 4;
+  string payment_token = 5;      // Tokenized payment method from vault
+  PaymentMethod method = 6;
+  string idempotency_key = 7;    // Exactly-once guarantee (BRD FR-PAY-001)
+  bool require_3ds = 8;          // 3D Secure 2.0 enforcement
+  map<string, string> metadata = 9;
+}
+
+message ProcessPaymentResponse {
+  bool success = 1;
+  string payment_id = 2;
+  PaymentStatus status = 3;
+  string gateway_transaction_id = 4;
+  string message = 5;
+  string redirect_url = 6;       // 3DS redirect URL if applicable
+  double fraud_score = 7;        // Real-time fraud probability (0.0-1.0)
+}
+
+message RefundPaymentRequest {
+  string payment_id = 1;
+  double amount = 2;             // Partial refund amount; 0 = full refund
+  string reason = 3;
+  string idempotency_key = 4;
+}
+
+message RefundPaymentResponse {
+  bool success = 1;
+  string refund_id = 2;
+  PaymentStatus status = 3;
+  double refunded_amount = 4;
+  string message = 5;
+}
+
+message GetPaymentStatusRequest {
+  string payment_id = 1;
+}
+
+message GetPaymentStatusResponse {
+  bool success = 1;
+  string payment_id = 2;
+  PaymentStatus status = 3;
+  double amount = 4;
+  Currency currency = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message FraudScoreRequest {
+  string user_id = 1;
+  string order_id = 2;
+  double amount = 3;
+  string ip_address = 4;
+  string device_fingerprint = 5;
+  string billing_country = 6;
+  string shipping_country = 7;
+  map<string, string> signals = 8;  // Additional fraud signals
+}
+
+message FraudScoreResponse {
+  double score = 1;              // Fraud probability 0.0-1.0
+  string risk_level = 2;        // LOW, MEDIUM, HIGH, CRITICAL
+  bool auto_blocked = 3;        // true if score > 0.85 (BRD FR-PAY-002)
+  bool requires_review = 4;     // true if 0.60-0.85 range
+  repeated string risk_factors = 5;
+}
+
+message CreatePaymentMethodRequest {
+  string user_id = 1;
+  PaymentMethod method = 2;
+  string token = 3;             // One-time token from Stripe Elements/SDK
+  bool set_default = 4;
+}
+
+message CreatePaymentMethodResponse {
+  bool success = 1;
+  string payment_method_id = 2;
+  PaymentMethod method = 3;
+  string last_four = 4;         // Last 4 digits for display
+  string brand = 5;             // Visa, Mastercard, etc.
+  string message = 6;
+}
+
+message ListPaymentMethodsRequest {
+  string user_id = 1;
+}
+
+message ListPaymentMethodsResponse {
+  repeated SavedPaymentMethod methods = 1;
+}
+
+message SavedPaymentMethod {
+  string id = 1;
+  PaymentMethod method = 2;
+  string last_four = 3;
+  string brand = 4;
+  string expiry_month = 5;
+  string expiry_year = 6;
+  bool is_default = 7;
+}

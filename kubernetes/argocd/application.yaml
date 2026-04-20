@@ -1,0 +1,57 @@
+# ArgoCD Application — GitOps Deployment (BRD Section 8.2)
+# Cluster state defined entirely in Git. Drift detection and auto-sync enabled.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecommerce-platform
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: >-
+      api-gateway=ecommerce-platform/api-gateway,
+      user-service=ecommerce-platform/user-service,
+      product-service=ecommerce-platform/product-service,
+      order-service=ecommerce-platform/order-service,
+      payment-service=ecommerce-platform/payment-service,
+      inventory-service=ecommerce-platform/inventory-service,
+      cart-service=ecommerce-platform/cart-service,
+      notification-service=ecommerce-platform/notification-service
+    argocd-image-updater.argoproj.io/write-back-method: git
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Rajkaran-122/Shopify_java.git
+    targetRevision: main
+    path: kubernetes/helm/ecommerce-platform
+    helm:
+      valueFiles:
+        - values.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ecommerce
+
+  syncPolicy:
+    automated:
+      prune: true          # Remove resources not in Git
+      selfHeal: true       # Auto-correct drift from desired state
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Health checks for custom resources
+  ignoreDifferences:
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/metrics

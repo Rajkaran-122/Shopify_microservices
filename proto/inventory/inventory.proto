@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package inventory;
+
+option go_package = "digital-metro/ecomm_java/proto/inventory;inventory";
+
+// InventoryService manages real-time inventory per BRD Section FR-INV-001.
+// Implements soft reservation model with 15-minute TTL during checkout,
+// hard commit on payment success, and multi-warehouse support.
+service InventoryService {
+  // CheckAvailability verifies stock across warehouses.
+  rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
+
+  // ReserveInventory creates a soft reservation with 15-min TTL.
+  // Used during checkout to prevent overselling.
+  rpc ReserveInventory(ReserveInventoryRequest) returns (ReserveInventoryResponse);
+
+  // ConfirmReservation hard-commits a reservation on payment success.
+  rpc ConfirmReservation(ConfirmReservationRequest) returns (ConfirmReservationResponse);
+
+  // ReleaseReservation cancels a soft reservation (payment failure/timeout).
+  rpc ReleaseReservation(ReleaseReservationRequest) returns (ReleaseReservationResponse);
+
+  // UpdateStock adjusts inventory levels (restock, damage, adjustment).
+  rpc UpdateStock(UpdateStockRequest) returns (UpdateStockResponse);
+
+  // GetInventoryLevels returns stock levels across all warehouses for a product.
+  rpc GetInventoryLevels(GetInventoryLevelsRequest) returns (GetInventoryLevelsResponse);
+
+  // BulkCheckAvailability checks multiple products at once (cart validation).
+  rpc BulkCheckAvailability(BulkCheckRequest) returns (BulkCheckResponse);
+}
+
+enum ReservationStatus {
+  RESERVATION_UNSPECIFIED = 0;
+  RESERVATION_ACTIVE = 1;       // Soft hold, 15-min TTL
+  RESERVATION_CONFIRMED = 2;    // Hard committed after payment
+  RESERVATION_RELEASED = 3;     // Expired or cancelled
+  RESERVATION_EXPIRED = 4;      // TTL exceeded
+}
+
+message WarehouseStock {
+  string warehouse_id = 1;
+  string warehouse_name = 2;
+  string region = 3;
+  int32 available_quantity = 4;
+  int32 reserved_quantity = 5;
+  int32 total_quantity = 6;
+}
+
+message Reservation {
+  string reservation_id = 1;
+  string product_id = 2;
+  string order_id = 3;
+  string warehouse_id = 4;
+  int32 quantity = 5;
+  ReservationStatus status = 6;
+  string created_at = 7;
+  string expires_at = 8;        // created_at + 15 minutes
+}
+
+// ---- Requests/Responses ----
+
+message CheckAvailabilityRequest {
+  string product_id = 1;
+  int32 required_quantity = 2;
+  string preferred_warehouse = 3;  // Optional: nearest warehouse
+}
+
+message CheckAvailabilityResponse {
+  bool available = 1;
+  int32 total_available = 2;
+  repeated WarehouseStock warehouse_stocks = 3;
+  string suggested_warehouse = 4;   // Nearest warehouse with stock
+}
+
+message ReserveInventoryRequest {
+  string order_id = 1;
+  string product_id = 2;
+  int32 quantity = 3;
+  string warehouse_id = 4;
+  int32 ttl_minutes = 5;           // Default: 15 per BRD
+}
+
+message ReserveInventoryResponse {
+  bool success = 1;
+  Reservation reservation = 2;
+  string message = 3;
+}
+
+message ConfirmReservationRequest {
+  string reservation_id = 1;
+  string order_id = 2;
+}
+
+message ConfirmReservationResponse {
+  bool success = 1;
+  ReservationStatus status = 2;
+  string message = 3;
+}
+
+message ReleaseReservationRequest {
+  string reservation_id = 1;
+  string reason = 2;
+}
+
+message ReleaseReservationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateStockRequest {
+  string product_id = 1;
+  string warehouse_id = 2;
+  int32 quantity_change = 3;    // Positive = restock, Negative = adjustment
+  string reason = 4;
+  string updated_by = 5;
+}
+
+message UpdateStockResponse {
+  bool success = 1;
+  int32 new_quantity = 2;
+  string message = 3;
+}
+
+message GetInventoryLevelsRequest {
+  string product_id = 1;
+}
+
+message GetInventoryLevelsResponse {
+  string product_id = 1;
+  int32 total_available = 2;
+  int32 total_reserved = 3;
+  repeated WarehouseStock warehouses = 4;
+}
+
+message BulkCheckRequest {
+  repeated BulkCheckItem items = 1;
+}
+
+message BulkCheckItem {
+  string product_id = 1;
+  int32 required_quantity = 2;
+}
+
+message BulkCheckResponse {
+  bool all_available = 1;
+  repeated BulkCheckResult results = 2;
+}
+
+message BulkCheckResult {
+  string product_id = 1;
+  bool available = 2;
+  int32 available_quantity = 3;
+  int32 requested_quantity = 4;
+}

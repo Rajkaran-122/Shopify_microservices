@@ -1,0 +1,28 @@
+# =============================================================================
+# Helm Chart — FAANG-Grade E-Commerce Platform
+# =============================================================================
+# Deploys all microservices to Kubernetes with:
+# - HPA auto-scaling (BRD NFR-SCALE-002)
+# - Pod Disruption Budgets (N+2 redundancy per NFR-REL-003)
+# - Network Policies (zero-trust per BRD Section 10.1)
+# - Liveness/Readiness/Startup probes (BRD Section 7.5)
+# - Resource limits and requests
+# - Service mesh annotations (Istio)
+# =============================================================================
+
+apiVersion: v2
+name: ecommerce-platform
+description: Enterprise-scale e-commerce microservices platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - ecommerce
+  - microservices
+  - grpc
+  - kubernetes
+
+maintainers:
+  - name: Digital Metro
+    email: platform@digital-metro.com

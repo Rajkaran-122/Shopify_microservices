@@ -1,7 +1,22 @@
+# =============================================================================
+# FAANG-Grade Docker Compose — Full Platform Stack
+# =============================================================================
+# This compose file brings up the complete e-commerce platform locally,
+# including all microservices, databases, cache, event bus, and
+# the full observability stack (Prometheus, Grafana, Jaeger, Loki).
+#
+# Usage: docker-compose up -d
+# Health: curl http://localhost:8080/health
+# =============================================================================
+
 version: '3.8'
 
 services:
-  postgres_user:
+  # ================================================================
+  # DATABASES — Polyglot Persistence (BRD Section 9.1)
+  # ================================================================
+
+  postgres-user:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: user_admin
@@ -13,8 +28,13 @@ services:
       - postgres_user_data:/var/lib/postgresql/data
     networks:
       - ecommerce_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_admin -d user_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  postgres_product:
+  postgres-product:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: product_admin
@@ -26,8 +46,13 @@ services:
       - postgres_product_data:/var/lib/postgresql/data
     networks:
       - ecommerce_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U product_admin -d product_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  postgres_order:
+  postgres-order:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: order_admin
@@ -39,22 +64,277 @@ services:
       - postgres_order_data:/var/lib/postgresql/data
     networks:
       - ecommerce_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_admin -d order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-payment:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: payment_admin
+      POSTGRES_PASSWORD: payment_pass
+      POSTGRES_DB: payment_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_payment_data:/var/lib/postgresql/data
+    networks:
+      - payment_cde_network  # PCI-DSS: Isolated network
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_admin -d payment_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ================================================================
+  # CACHE — Redis Cluster (BRD Section 7.3: L2 Distributed Cache)
+  # ================================================================
 
   redis:
     image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - ecommerce_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # ================================================================
+  # EVENT BUS — Apache Kafka (BRD Section 4.2: Event Streaming)
+  # ================================================================
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - ecommerce_network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ================================================================
+  # OBSERVABILITY STACK (BRD Section 6.4)
+  # ================================================================
+
+  # Prometheus — Metrics collection (NFR-OBS-003)
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - ecommerce_network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+
+  # Grafana — Dashboards (NFR-OBS-003: Golden signals)
+  grafana:
+    image: grafana/grafana:10.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - ecommerce_network
+
+  # Jaeger — Distributed tracing (NFR-OBS-001)
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - ecommerce_network
+
+  # Loki — Log aggregation (NFR-OBS-002)
+  loki:
+    image: grafana/loki:2.9.0
+    ports:
+      - "3100:3100"
+    networks:
+      - ecommerce_network
+
+  # ================================================================
+  # MICROSERVICES (BRD Section 4.3)
+  # ================================================================
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "8081:8081"  # Metrics/health port
+    environment:
+      ENVIRONMENT: development
+      HTTP_PORT: "8080"
+      GRPC_USER_SERVICE: "user-service:50051"
+      GRPC_PRODUCT_SERVICE: "product-service:50052"
+      GRPC_ORDER_SERVICE: "order-service:50053"
+      GRPC_PAYMENT_SERVICE: "payment-service:50055"
+      GRPC_CART_SERVICE: "cart-service:50057"
+      OTLP_ENDPOINT: "jaeger:4317"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      LOG_LEVEL: "debug"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ecommerce_network
+
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "50051:50051"
+    environment:
+      ENVIRONMENT: development
+      GRPC_PORT: "50051"
+      DB_HOST: postgres-user
+      DB_PORT: "5432"
+      DB_USER: user_admin
+      DB_PASSWORD: user_pass
+      DB_NAME: user_db
+      OTLP_ENDPOINT: "jaeger:4317"
+      LOG_LEVEL: "debug"
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+    networks:
+      - ecommerce_network
+
+  product-service:
+    build:
+      context: ./services/product-service
+      dockerfile: Dockerfile
+    ports:
+      - "50052:50052"
+    environment:
+      ENVIRONMENT: development
+      GRPC_PORT: "50052"
+      DB_HOST: postgres-product
+      DB_PORT: "5432"
+      DB_USER: product_admin
+      DB_PASSWORD: product_pass
+      DB_NAME: product_db
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      OTLP_ENDPOINT: "jaeger:4317"
+      LOG_LEVEL: "debug"
+    depends_on:
+      postgres-product:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ecommerce_network
+
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    ports:
+      - "50053:50053"
+    environment:
+      ENVIRONMENT: development
+      GRPC_PORT: "50053"
+      DB_HOST: postgres-order
+      DB_PORT: "5432"
+      DB_USER: order_admin
+      DB_PASSWORD: order_pass
+      DB_NAME: order_db
+      KAFKA_BROKERS: "kafka:9092"
+      OTLP_ENDPOINT: "jaeger:4317"
+      LOG_LEVEL: "debug"
+    depends_on:
+      postgres-order:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ecommerce_network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "50054:50054"
+    environment:
+      ENVIRONMENT: development
+      GRPC_PORT: "50054"
+      KAFKA_BROKERS: "kafka:9092"
+      OTLP_ENDPOINT: "jaeger:4317"
+      LOG_LEVEL: "debug"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - ecommerce_network
+
+# ================================================================
+# VOLUMES — Persistent data stores
+# ================================================================
 volumes:
   postgres_user_data:
   postgres_product_data:
   postgres_order_data:
+  postgres_payment_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
 
+# ================================================================
+# NETWORKS — Segmented per BRD Section 10.1 (Zero-Trust)
+# ================================================================
 networks:
   ecommerce_network:
     driver: bridge
+  payment_cde_network:
+    driver: bridge
+    internal: true  # PCI-DSS: No external access

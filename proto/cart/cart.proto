@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package cart;
+
+option go_package = "digital-metro/ecomm_java/proto/cart;cart";
+
+// CartService manages shopping carts per BRD Section FR-CUST-003.
+// Backed by Redis Cluster for sub-millisecond read/write (BRD Section 9.1).
+// Carts persist for 90 days with cross-device sync.
+service CartService {
+  // GetCart retrieves the current cart for a user or session.
+  rpc GetCart(GetCartRequest) returns (GetCartResponse);
+
+  // AddItem adds a product to the cart with real-time inventory validation.
+  rpc AddItem(AddItemRequest) returns (AddItemResponse);
+
+  // UpdateItem changes the quantity of an existing cart item.
+  rpc UpdateItem(UpdateItemRequest) returns (UpdateItemResponse);
+
+  // RemoveItem removes a product from the cart.
+  rpc RemoveItem(RemoveItemRequest) returns (RemoveItemResponse);
+
+  // ClearCart empties the entire cart.
+  rpc ClearCart(ClearCartRequest) returns (ClearCartResponse);
+
+  // MergeCarts merges a guest cart into an authenticated user's cart.
+  rpc MergeCarts(MergeCartsRequest) returns (MergeCartsResponse);
+
+  // ApplyCoupon applies a discount code to the cart.
+  rpc ApplyCoupon(ApplyCouponRequest) returns (ApplyCouponResponse);
+}
+
+message CartItem {
+  string product_id = 1;
+  string product_name = 2;
+  int32 quantity = 3;
+  double unit_price = 4;
+  double total_price = 5;
+  string image_url = 6;
+  bool in_stock = 7;
+  map<string, string> variants = 8;  // color, size, etc.
+}
+
+message Cart {
+  string cart_id = 1;
+  string user_id = 2;           // Empty for guest carts
+  string session_id = 3;        // Session-based for guests
+  repeated CartItem items = 4;
+  double subtotal = 5;
+  double discount = 6;
+  string coupon_code = 7;
+  double total = 8;
+  int32 item_count = 9;
+  string currency = 10;
+  string updated_at = 11;
+  string expires_at = 12;       // 90-day TTL per BRD
+}
+
+// ---- Requests/Responses ----
+
+message GetCartRequest {
+  string user_id = 1;
+  string session_id = 2;
+}
+
+message GetCartResponse {
+  bool success = 1;
+  Cart cart = 2;
+}
+
+message AddItemRequest {
+  string user_id = 1;
+  string session_id = 2;
+  string product_id = 3;
+  int32 quantity = 4;
+  map<string, string> variants = 5;
+}
+
+message AddItemResponse {
+  bool success = 1;
+  Cart cart = 2;
+  string message = 3;
+}
+
+message UpdateItemRequest {
+  string user_id = 1;
+  string session_id = 2;
+  string product_id = 3;
+  int32 quantity = 4;
+}
+
+message UpdateItemResponse {
+  bool success = 1;
+  Cart cart = 2;
+}
+
+message RemoveItemRequest {
+  string user_id = 1;
+  string session_id = 2;
+  string product_id = 3;
+}
+
+message RemoveItemResponse {
+  bool success = 1;
+  Cart cart = 2;
+}
+
+message ClearCartRequest {
+  string user_id = 1;
+  string session_id = 2;
+}
+
+message ClearCartResponse {
+  bool success = 1;
+}
+
+message MergeCartsRequest {
+  string session_id = 1;        // Guest session
+  string user_id = 2;           // Authenticated user
+}
+
+message MergeCartsResponse {
+  bool success = 1;
+  Cart cart = 2;
+  int32 items_merged = 3;
+}
+
+message ApplyCouponRequest {
+  string user_id = 1;
+  string session_id = 2;
+  string coupon_code = 3;
+}
+
+message ApplyCouponResponse {
+  bool success = 1;
+  Cart cart = 2;
+  double discount_amount = 3;
+  string message = 4;
+}

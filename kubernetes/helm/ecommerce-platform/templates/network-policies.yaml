@@ -1,0 +1,271 @@
+# =============================================================================
+# Network Policies — Zero-Trust Architecture (BRD Section 10.1)
+# =============================================================================
+# "Never trust, always verify." Default-deny all traffic.
+# Only explicitly allowed pod-to-pod communication permitted.
+# =============================================================================
+
+# Default Deny All — Every namespace starts with no allowed traffic
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+# API Gateway — Allows external ingress, egress to all services
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-gateway
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: apiGateway
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from: []  # Allow from external (via LoadBalancer/Ingress)
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: userService
+        - podSelector:
+            matchLabels:
+              app: productService
+        - podSelector:
+            matchLabels:
+              app: orderService
+        - podSelector:
+            matchLabels:
+              app: cartService
+        - podSelector:
+            matchLabels:
+              app: paymentService
+    - to: []  # Allow DNS resolution
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+
+# User Service — Only accepts from API Gateway and Order Service
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-user-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: userService
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: apiGateway
+        - podSelector:
+            matchLabels:
+              app: orderService
+      ports:
+        - port: 50051
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres-user
+      ports:
+        - port: 5432
+          protocol: TCP
+    - to: []
+      ports:
+        - port: 53
+          protocol: UDP
+
+# Order Service — Accepts from Gateway; egress to Kafka, User, Product, Payment
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-order-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: orderService
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: apiGateway
+      ports:
+        - port: 50053
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres-order
+      ports:
+        - port: 5432
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: kafka
+      ports:
+        - port: 9092
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: userService
+        - podSelector:
+            matchLabels:
+              app: productService
+    - to: []
+      ports:
+        - port: 53
+          protocol: UDP
+
+# Payment Service — PCI-DSS Isolated (BRD Section 10.4)
+# Strict ingress: only API Gateway and Order Service
+# Strict egress: only payment DB and Stripe API
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-payment-service
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    compliance: "PCI-DSS-Level-1"
+    description: "Cardholder Data Environment isolation"
+spec:
+  podSelector:
+    matchLabels:
+      app: paymentService
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: apiGateway
+        - podSelector:
+            matchLabels:
+              app: orderService
+      ports:
+        - port: 50055
+          protocol: TCP
+  egress:
+    # Payment DB only
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres-payment
+      ports:
+        - port: 5432
+          protocol: TCP
+    # Kafka for events
+    - to:
+        - podSelector:
+            matchLabels:
+              app: kafka
+      ports:
+        - port: 9092
+          protocol: TCP
+    # External: Stripe API (HTTPS only)
+    - to: []
+      ports:
+        - port: 443
+          protocol: TCP
+    - to: []
+      ports:
+        - port: 53
+          protocol: UDP
+
+# =============================================================================
+# Pod Disruption Budgets — BRD NFR-REL-003 (N+2 redundancy)
+# =============================================================================
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: apiGateway
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: user-service-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: userService
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-service-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: orderService
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payment-service-pdb
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    compliance: "PCI-DSS-Level-1"
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: paymentService
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: product-service-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: productService

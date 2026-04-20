@@ -1,0 +1,60 @@
+# =============================================================================
+# Horizontal Pod Autoscalers — BRD NFR-SCALE-002
+# =============================================================================
+# Services auto-scale from minReplicas to maxReplicas within 90 seconds
+# based on CPU, memory, and custom metrics (RPS, queue depth).
+# =============================================================================
+
+{{- range $name, $svc := .Values }}
+{{- if and (kindIs "map" $svc) (hasKey $svc "autoscaling") }}
+{{- if $svc.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $name }}-hpa
+  namespace: {{ $svc.namespace | default $.Release.Namespace }}
+  labels:
+    app: {{ $name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $name }}
+  minReplicas: {{ $svc.autoscaling.minReplicas | default 2 }}
+  maxReplicas: {{ $svc.autoscaling.maxReplicas | default 100 }}
+  behavior:
+    # Scale up aggressively (BRD: within 90 seconds)
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 10
+          periodSeconds: 30
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+      selectPolicy: Max
+    # Scale down conservatively to prevent flapping
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 5
+          periodSeconds: 60
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $svc.autoscaling.targetCPUUtilization | default 70 }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $svc.autoscaling.targetMemoryUtilization | default 80 }}
+{{- end }}
+{{- end }}
+{{- end }}

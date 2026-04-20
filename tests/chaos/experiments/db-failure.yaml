@@ -1,0 +1,97 @@
+# Chaos Engineering Experiment — Database Failure
+# BRD Section 12.3: Weekly chaos experiments in staging
+# Hypothesis: "System recovers gracefully when the Order Service
+#              loses connectivity to its primary database."
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: order-db-network-partition
+  namespace: ecommerce
+  labels:
+    experiment: database-failure
+    service: order-service
+    team: platform-engineering
+  annotations:
+    chaos-mesh.org/description: >
+      Simulates complete network partition between Order Service
+      and its PostgreSQL database. Validates circuit breaker activation,
+      graceful degradation, and automatic recovery.
+    hypothesis: >
+      When the Order Service loses database connectivity, the circuit breaker
+      opens within 30 seconds, the service returns HTTP 503 with a user-friendly
+      error message, existing cached data continues serving read requests,
+      and the service fully recovers within 60 seconds of connectivity restoration.
+    blast-radius: staging-only
+    rollback: automatic
+
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces:
+      - ecommerce
+    labelSelectors:
+      app: orderService
+  direction: both
+  target:
+    selector:
+      namespaces:
+        - ecommerce
+      labelSelectors:
+        app: postgres-order
+    mode: all
+  duration: "120s"  # 2-minute partition
+
+---
+# Chaos Experiment 2: Pod Kill — Tests Kubernetes self-healing
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: payment-service-pod-kill
+  namespace: ecommerce
+  labels:
+    experiment: pod-failure
+    service: payment-service
+    compliance: pci-dss
+  annotations:
+    hypothesis: >
+      When 1 of 3 Payment Service pods is killed, Kubernetes reschedules
+      within 30 seconds, no payment transactions are lost (idempotency),
+      and error rate stays below 0.1% during recovery.
+
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - ecommerce
+    labelSelectors:
+      app: paymentService
+  gracePeriod: 0
+
+---
+# Chaos Experiment 3: Kafka Broker Failure
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: kafka-broker-failure
+  namespace: ecommerce
+  labels:
+    experiment: kafka-failure
+    service: kafka
+  annotations:
+    hypothesis: >
+      When 1 of 3 Kafka brokers is killed, producers failover to remaining
+      brokers within 5 seconds. Consumer lag stays below 60 seconds.
+      No events are lost due to replication factor 3.
+
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - ecommerce
+    labelSelectors:
+      app: kafka
+  gracePeriod: 0

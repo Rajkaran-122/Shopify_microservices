@@ -1,0 +1,86 @@
+# Prometheus Configuration — FAANG-Grade Observability
+# Implements BRD NFR-OBS-003: Golden signals dashboards refreshed every 15s
+
+global:
+  scrape_interval: 15s      # BRD: refreshed every 15 seconds
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+  external_labels:
+    cluster: ecommerce-platform
+    environment: development
+
+# Alerting rules (BRD NFR-OBS-004: < 2-minute detection)
+rule_files:
+  - /etc/prometheus/alerts/*.yml
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Service discovery and scrape configs
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Gateway metrics
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8081']
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # User Service
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:9091']
+    metrics_path: /metrics
+
+  # Product Service
+  - job_name: 'product-service'
+    static_configs:
+      - targets: ['product-service:9091']
+    metrics_path: /metrics
+
+  # Order Service
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-service:9091']
+    metrics_path: /metrics
+
+  # Payment Service
+  - job_name: 'payment-service'
+    static_configs:
+      - targets: ['payment-service:9091']
+    metrics_path: /metrics
+
+  # Notification Service
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:9091']
+    metrics_path: /metrics
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # PostgreSQL metrics
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # Kafka metrics
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+
+  # Node exporter (infrastructure)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
