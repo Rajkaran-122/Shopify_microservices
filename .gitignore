@@ -1,0 +1,35 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+*.o
+*.a
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Go
+go.sum
+vendor/
+
+# Environment
+.env
+.env.local
+
+# Database
+*.sql.bak
+*.pem
+
+# Logs
+*.log
+
+# Docker
+.docker/

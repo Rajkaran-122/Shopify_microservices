@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres_user:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: user_admin
+      POSTGRES_PASSWORD: user_pass
+      POSTGRES_DB: user_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce_network
+
+  postgres_product:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: product_admin
+      POSTGRES_PASSWORD: product_pass
+      POSTGRES_DB: product_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_product_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce_network
+
+  postgres_order:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: order_admin
+      POSTGRES_PASSWORD: order_pass
+      POSTGRES_DB: order_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce_network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ecommerce_network
+
+volumes:
+  postgres_user_data:
+  postgres_product_data:
+  postgres_order_data:
+  redis_data:
+
+networks:
+  ecommerce_network:
+    driver: bridge
