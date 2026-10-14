@@ -271,9 +271,9 @@ jobs:
         run: |
           IMAGE="${{ steps.ecr.outputs.registry }}/ecommerce-platform/${{ matrix.service }}"
           docker build \
+            --build-arg SERVICE=${{ matrix.service }} \
             --tag "${IMAGE}:${{ github.sha }}" \
             --tag "${IMAGE}:latest" \
-            --file services/${{ matrix.service }}/Dockerfile \
-            services/${{ matrix.service }}/
+            --file Dockerfile .
           docker push "${IMAGE}:${{ github.sha }}"
           docker push "${IMAGE}:latest"
