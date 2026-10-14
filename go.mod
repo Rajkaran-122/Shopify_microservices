@@ -3,6 +3,7 @@ module digital-metro/ecomm_java
 go 1.25.4
 
 require (
+	github.com/redis/go-redis/v9 v9.4.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 )
