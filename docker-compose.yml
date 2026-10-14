@@ -203,8 +203,10 @@ services:
 
   api-gateway:
     build:
-      context: ./services/api-gateway
+      context: .
       dockerfile: Dockerfile
+      args:
+        SERVICE: api-gateway
     ports:
       - "8080:8080"
       - "8081:8081"  # Metrics/health port
@@ -228,8 +230,10 @@ services:
 
   user-service:
     build:
-      context: ./services/user-service
+      context: .
       dockerfile: Dockerfile
+      args:
+        SERVICE: user-service
     ports:
       - "50051:50051"
     environment:
@@ -250,8 +254,10 @@ services:
 
   product-service:
     build:
-      context: ./services/product-service
+      context: .
       dockerfile: Dockerfile
+      args:
+        SERVICE: product-service
     ports:
       - "50052:50052"
     environment:
@@ -276,8 +282,10 @@ services:
 
   order-service:
     build:
-      context: ./services/order-service
+      context: .
       dockerfile: Dockerfile
+      args:
+        SERVICE: order-service
     ports:
       - "50053:50053"
     environment:
@@ -301,8 +309,10 @@ services:
 
   notification-service:
     build:
-      context: ./services/notification-service
+      context: .
       dockerfile: Dockerfile
+      args:
+        SERVICE: notification-service
     ports:
       - "50054:50054"
     environment:
