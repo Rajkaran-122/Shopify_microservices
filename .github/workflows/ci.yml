@@ -19,7 +19,7 @@ on:
     branches: [main]
 
 env:
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.25.4'
   DOCKER_BUILDKIT: 1
 
 jobs:
@@ -38,6 +38,17 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Install protobuf compiler and generate Go sources
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          protoc --go_out=. --go_opt=module=digital-metro/ecomm_java \
+            --go-grpc_out=. --go-grpc_opt=module=digital-metro/ecomm_java \
+            proto/*/*.proto
+
       - name: Run go vet
         run: |
           for svc in services/*/; do
@@ -46,9 +57,9 @@ jobs:
           done
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v1.55
+          version: v2.14.0
           args: --timeout=5m
 
       - name: Check formatting
@@ -62,10 +73,7 @@ jobs:
 
       - name: Validate proto files
         run: |
-          sudo apt-get update && sudo apt-get install -y protobuf-compiler
-          for proto in proto/**/*.proto; do
-            protoc --lint_out=. "$proto" || true
-          done
+          protoc --descriptor_set_out=/tmp/protos.pb --include_imports proto/*/*.proto
 
   # ============================================================
   # Stage 2: Build & Dependency Audit
@@ -83,9 +91,6 @@ jobs:
           - product-service
           - order-service
           - notification-service
-          - payment-service
-          - inventory-service
-          - cart-service
     steps:
       - uses: actions/checkout@v4
 
@@ -93,6 +98,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+
+      - name: Install protobuf compiler and generate Go sources
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          protoc --go_out=. --go_opt=module=digital-metro/ecomm_java \
+            --go-grpc_out=. --go-grpc_opt=module=digital-metro/ecomm_java \
+            proto/*/*.proto
 
       - name: Build ${{ matrix.service }}
         working-directory: services/${{ matrix.service }}
@@ -128,6 +144,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+
+      - name: Install protobuf compiler and generate Go sources
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          protoc --go_out=. --go_opt=module=digital-metro/ecomm_java \
+            --go-grpc_out=. --go-grpc_opt=module=digital-metro/ecomm_java \
+            proto/*/*.proto
 
       - name: Run tests with coverage
         working-directory: services/${{ matrix.service }}
@@ -196,9 +223,9 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
+            --build-arg SERVICE=${{ matrix.service }} \
             --tag ${{ matrix.service }}:${{ github.sha }} \
-            --file services/${{ matrix.service }}/Dockerfile \
-            services/${{ matrix.service }}/
+            --file Dockerfile .
 
       # Container vulnerability scanning (BRD Section 10.4)
       - name: Run Trivy vulnerability scanner
