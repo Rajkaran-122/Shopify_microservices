@@ -35,33 +35,33 @@ func (s State) String() string {
 }
 
 var (
-	ErrCircuitOpen    = errors.New("circuit breaker is open")
-	ErrTooManyFails   = errors.New("too many failures, circuit opened")
+	ErrCircuitOpen  = errors.New("circuit breaker is open")
+	ErrTooManyFails = errors.New("too many failures, circuit opened")
 )
 
 // Config defines the circuit breaker behavior per BRD specifications.
 type Config struct {
-	Name                   string
-	FailureRateThreshold   float64       // 0.5 = 50% (BRD: 50%)
-	SlowCallRateThreshold  float64       // 0.8 = 80% (BRD: 80%)
-	SlowCallDuration       time.Duration // Calls slower than this are "slow"
-	WaitDurationInOpenState time.Duration // BRD: 30s
-	PermittedCallsInHalfOpen int          // BRD: 5
-	MinimumNumberOfCalls   int           // Minimum calls before evaluating
-	SlidingWindowSize      int           // Number of calls in evaluation window
+	Name                     string
+	FailureRateThreshold     float64       // 0.5 = 50% (BRD: 50%)
+	SlowCallRateThreshold    float64       // 0.8 = 80% (BRD: 80%)
+	SlowCallDuration         time.Duration // Calls slower than this are "slow"
+	WaitDurationInOpenState  time.Duration // BRD: 30s
+	PermittedCallsInHalfOpen int           // BRD: 5
+	MinimumNumberOfCalls     int           // Minimum calls before evaluating
+	SlidingWindowSize        int           // Number of calls in evaluation window
 }
 
 // DefaultConfig returns a circuit breaker config matching BRD Section 7.1.
 func DefaultConfig(name string) Config {
 	return Config{
-		Name:                    name,
-		FailureRateThreshold:    0.50,
-		SlowCallRateThreshold:   0.80,
-		SlowCallDuration:        2 * time.Second,
-		WaitDurationInOpenState: 30 * time.Second,
+		Name:                     name,
+		FailureRateThreshold:     0.50,
+		SlowCallRateThreshold:    0.80,
+		SlowCallDuration:         2 * time.Second,
+		WaitDurationInOpenState:  30 * time.Second,
 		PermittedCallsInHalfOpen: 5,
-		MinimumNumberOfCalls:    10,
-		SlidingWindowSize:       100,
+		MinimumNumberOfCalls:     10,
+		SlidingWindowSize:        100,
 	}
 }
 

@@ -15,7 +15,7 @@
 *.test
 
 # ---- Go Modules ----
-go.sum
+# Keep go.sum committed so builds use verified dependency checksums.
 vendor/
 
 # ---- IDE ----

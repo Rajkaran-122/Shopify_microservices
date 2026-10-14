@@ -33,16 +33,16 @@ type Logger struct {
 
 // LogEntry represents a single structured log entry.
 type LogEntry struct {
-	Timestamp   string            `json:"timestamp"`
-	Level       string            `json:"level"`
-	Service     string            `json:"service"`
-	Environment string            `json:"environment"`
-	Message     string            `json:"message"`
-	TraceID     string            `json:"trace_id,omitempty"`
-	SpanID      string            `json:"span_id,omitempty"`
+	Timestamp   string                 `json:"timestamp"`
+	Level       string                 `json:"level"`
+	Service     string                 `json:"service"`
+	Environment string                 `json:"environment"`
+	Message     string                 `json:"message"`
+	TraceID     string                 `json:"trace_id,omitempty"`
+	SpanID      string                 `json:"span_id,omitempty"`
 	Fields      map[string]interface{} `json:"fields,omitempty"`
-	Error       string            `json:"error,omitempty"`
-	Caller      string            `json:"caller,omitempty"`
+	Error       string                 `json:"error,omitempty"`
+	Caller      string                 `json:"caller,omitempty"`
 }
 
 // New creates a new structured logger for a microservice.
@@ -188,13 +188,13 @@ func import_json_write(w io.Writer, entry LogEntry) {
 		`","message":"` + escapeJSON(entry.Message) + `"`)
 
 	if entry.TraceID != "" {
-		buf = append(buf, []byte(`,"trace_id":"` + entry.TraceID + `"`)...)
+		buf = append(buf, []byte(`,"trace_id":"`+entry.TraceID+`"`)...)
 	}
 	if entry.SpanID != "" {
-		buf = append(buf, []byte(`,"span_id":"` + entry.SpanID + `"`)...)
+		buf = append(buf, []byte(`,"span_id":"`+entry.SpanID+`"`)...)
 	}
 	if entry.Error != "" {
-		buf = append(buf, []byte(`,"error":"` + escapeJSON(entry.Error) + `"`)...)
+		buf = append(buf, []byte(`,"error":"`+escapeJSON(entry.Error)+`"`)...)
 	}
 
 	buf = append(buf, []byte("}\n")...)

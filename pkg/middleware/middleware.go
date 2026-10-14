@@ -103,10 +103,10 @@ func CORS(cfg CORSConfig) func(http.Handler) http.Handler {
 // RateLimiter implements in-memory token bucket rate limiting.
 // Production deployment should use Redis for distributed rate limiting.
 type RateLimiter struct {
-	mu      sync.Mutex
-	buckets map[string]*tokenBucket
-	rate    int           // tokens per interval
-	burst   int           // max burst size
+	mu       sync.Mutex
+	buckets  map[string]*tokenBucket
+	rate     int // tokens per interval
+	burst    int // max burst size
 	interval time.Duration
 }
 
@@ -195,7 +195,7 @@ func RateLimit(unauthLimiter, authLimiter *RateLimiter) func(http.Handler) http.
 
 // JWTConfig holds JWT validation configuration.
 type JWTConfig struct {
-	PublicKey     *rsa.PublicKey
+	PublicKey    *rsa.PublicKey
 	Issuer       string
 	Audience     string
 	RequiredRole string // Empty = any authenticated user
@@ -205,7 +205,7 @@ type JWTConfig struct {
 type Claims struct {
 	UserID    string   `json:"sub"`
 	Email     string   `json:"email"`
-	Role      string   `json:"role"`      // Customer, Merchant, Admin, Super-Admin
+	Role      string   `json:"role"` // Customer, Merchant, Admin, Super-Admin
 	Issuer    string   `json:"iss"`
 	Audience  string   `json:"aud"`
 	ExpiresAt int64    `json:"exp"`
