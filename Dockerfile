@@ -19,7 +19,9 @@ RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11 \
 ENV PATH="/go/bin:${PATH}"
 RUN protoc --go_out=. --go_opt=module=digital-metro/ecomm_java \
     --go-grpc_out=. --go-grpc_opt=module=digital-metro/ecomm_java \
-    proto/*/*.proto
+    proto/*/*.proto \
+    && go mod tidy \
+    && go mod download
 
 ARG SERVICE
 RUN test -n "${SERVICE}" && test -d "/src/services/${SERVICE}"
