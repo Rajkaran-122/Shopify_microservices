@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
-	"digital-metro/ecomm_java/proto/user"
-	"digital-metro/ecomm_java/proto/product"
 	"digital-metro/ecomm_java/proto/order"
+	"digital-metro/ecomm_java/proto/product"
+	"digital-metro/ecomm_java/proto/user"
 )
 
 const (
-	port = ":8080"
-	userServiceAddr = "user-service:50051"
+	port              = ":8080"
+	userServiceAddr   = "user-service:50051"
 	productServiceAddr = "product-service:50052"
-	orderServiceAddr = "order-service:50053"
+	orderServiceAddr  = "order-service:50053"
 )
 
 type APIGateway struct {
@@ -29,19 +29,19 @@ type APIGateway struct {
 }
 
 func main() {
-	userConn, err := grpc.Dial(userServiceAddr, grpc.WithInsecure())
+	userConn, err := grpc.NewClient(userServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect user service: %v", err)
 	}
 	defer userConn.Close()
 
-	productConn, err := grpc.Dial(productServiceAddr, grpc.WithInsecure())
+	productConn, err := grpc.NewClient(productServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect product service: %v", err)
 	}
 	defer productConn.Close()
 
-	orderConn, err := grpc.Dial(orderServiceAddr, grpc.WithInsecure())
+	orderConn, err := grpc.NewClient(orderServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect order service: %v", err)
 	}
