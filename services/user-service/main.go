@@ -39,7 +39,6 @@ func main() {
 }
 
 type UserServiceServer struct {
-	db interface{} // Simplified for now
 	user.UnimplementedUserServiceServer
 }
 
