@@ -30,6 +30,8 @@ jobs:
   lint:
     name: "Lint & Format Check"
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -63,6 +65,21 @@ jobs:
         with:
           version: v2.14.0
           args: --timeout=5m --default=none --enable=govet --enable=ineffassign --enable=unused
+
+      - name: Format Go sources and commit formatting fixes
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          set -euo pipefail
+          gofmt -w $(git ls-files '*.go')
+          if git diff --quiet -- '*.go'; then
+            echo "All tracked Go files are already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $(git diff --name-only -- '*.go')
+          git commit -m "style: format Go sources"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
 
       - name: Check formatting
         run: |
