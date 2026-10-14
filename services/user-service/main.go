@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 
-	"github.com/lib/pq"
 	"google.golang.org/grpc"
-	
+
 	"digital-metro/ecomm_java/proto/user"
 )
 
