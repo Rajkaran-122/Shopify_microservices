@@ -16,16 +16,16 @@ import (
 )
 
 const (
-	port              = ":8080"
-	userServiceAddr   = "user-service:50051"
+	port               = ":8080"
+	userServiceAddr    = "user-service:50051"
 	productServiceAddr = "product-service:50052"
-	orderServiceAddr  = "order-service:50053"
+	orderServiceAddr   = "order-service:50053"
 )
 
 type APIGateway struct {
-	userClient user.UserServiceClient
+	userClient    user.UserServiceClient
 	productClient product.ProductServiceClient
-	orderClient order.OrderServiceClient
+	orderClient   order.OrderServiceClient
 }
 
 func main() {
