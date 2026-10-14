@@ -60,7 +60,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.14.0
-          args: --timeout=5m --disable-all --enable=govet --enable=ineffassign --enable=unused
+          args: --timeout=5m --default=none --enable=govet --enable=ineffassign --enable=unused
 
       - name: Check formatting
         run: |
@@ -118,7 +118,7 @@ jobs:
 
       - name: Dependency audit
         working-directory: services/${{ matrix.service }}
-        run: go list -json -m all | go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
         continue-on-error: true
 
   # ============================================================
