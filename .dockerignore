@@ -1,0 +1,12 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+**/coverage.out
+**/coverage.html
+**/*.test
+**/tmp
+**/dist
+**/build
+**/node_modules
