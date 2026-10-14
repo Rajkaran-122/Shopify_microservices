@@ -15,8 +15,8 @@ import (
 type Status string
 
 const (
-	StatusUp      Status = "UP"
-	StatusDown    Status = "DOWN"
+	StatusUp       Status = "UP"
+	StatusDown     Status = "DOWN"
 	StatusDegraded Status = "DEGRADED"
 )
 
@@ -33,12 +33,12 @@ type Checker struct {
 
 // Response is the JSON health check response body.
 type Response struct {
-	Status      Status            `json:"status"`
-	Service     string            `json:"service"`
-	Version     string            `json:"version"`
-	Uptime      string            `json:"uptime"`
-	Timestamp   string            `json:"timestamp"`
-	Checks      map[string]string `json:"checks,omitempty"`
+	Status    Status            `json:"status"`
+	Service   string            `json:"service"`
+	Version   string            `json:"version"`
+	Uptime    string            `json:"uptime"`
+	Timestamp string            `json:"timestamp"`
+	Checks    map[string]string `json:"checks,omitempty"`
 }
 
 var startTime = time.Now()

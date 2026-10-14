@@ -35,12 +35,12 @@ type ServiceConfig struct {
 	RedisDB       int
 
 	// Kafka
-	KafkaBrokers  string
-	KafkaGroupID  string
+	KafkaBrokers string
+	KafkaGroupID string
 
 	// Observability
-	OTLPEndpoint string
-	LogLevel     string
+	OTLPEndpoint    string
+	LogLevel        string
 	TraceSampleRate float64
 
 	// Security

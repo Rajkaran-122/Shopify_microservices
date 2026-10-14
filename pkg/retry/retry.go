@@ -13,11 +13,11 @@ import (
 
 // Config defines retry behavior per BRD specifications.
 type Config struct {
-	MaxRetries    int           // BRD: 3
-	InitialDelay  time.Duration // BRD: 100ms
-	MaxDelay      time.Duration // BRD: 30s
-	Multiplier    float64       // BRD: 2.0
-	JitterFactor  float64       // 0.0-1.0, adds randomness to prevent thundering herd
+	MaxRetries   int           // BRD: 3
+	InitialDelay time.Duration // BRD: 100ms
+	MaxDelay     time.Duration // BRD: 30s
+	Multiplier   float64       // BRD: 2.0
+	JitterFactor float64       // 0.0-1.0, adds randomness to prevent thundering herd
 }
 
 // DefaultConfig returns retry configuration matching BRD Section 7.5.

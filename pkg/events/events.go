@@ -16,10 +16,10 @@ import (
 // Topic naming convention: {domain}.{entity}.{event}
 const (
 	// Order domain events (Saga choreography)
-	TopicOrderCreated    = "order.order.created"
-	TopicOrderConfirmed  = "order.order.confirmed"
-	TopicOrderCancelled  = "order.order.cancelled"
-	TopicOrderFailed     = "order.order.failed"
+	TopicOrderCreated   = "order.order.created"
+	TopicOrderConfirmed = "order.order.confirmed"
+	TopicOrderCancelled = "order.order.cancelled"
+	TopicOrderFailed    = "order.order.failed"
 
 	// Payment domain events
 	TopicPaymentSucceeded = "payment.transaction.succeeded"
@@ -44,28 +44,28 @@ const (
 // All events follow CloudEvents specification for interoperability.
 type Event struct {
 	// CloudEvents metadata
-	ID              string                 `json:"id"`
-	Source          string                 `json:"source"`           // Service that produced the event
-	Type            string                 `json:"type"`             // Event type (topic name)
-	Time            string                 `json:"time"`             // ISO 8601 timestamp
-	DataContentType string                 `json:"datacontenttype"`  // application/json
+	ID              string `json:"id"`
+	Source          string `json:"source"`          // Service that produced the event
+	Type            string `json:"type"`            // Event type (topic name)
+	Time            string `json:"time"`            // ISO 8601 timestamp
+	DataContentType string `json:"datacontenttype"` // application/json
 
 	// Business data
-	Data            interface{}            `json:"data"`
+	Data interface{} `json:"data"`
 
 	// Tracing context (BRD NFR-OBS-001)
-	TraceID         string                 `json:"trace_id,omitempty"`
-	SpanID          string                 `json:"span_id,omitempty"`
+	TraceID string `json:"trace_id,omitempty"`
+	SpanID  string `json:"span_id,omitempty"`
 
 	// Saga correlation
-	CorrelationID   string                 `json:"correlation_id"`   // Links saga steps
-	CausationID     string                 `json:"causation_id"`     // ID of event that caused this
+	CorrelationID string `json:"correlation_id"` // Links saga steps
+	CausationID   string `json:"causation_id"`   // ID of event that caused this
 
 	// Idempotency
-	IdempotencyKey  string                 `json:"idempotency_key"`
+	IdempotencyKey string `json:"idempotency_key"`
 
 	// Metadata
-	Metadata        map[string]string      `json:"metadata,omitempty"`
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 // NewEvent creates a new domain event with proper metadata.
@@ -107,11 +107,11 @@ func UnmarshalEvent(data []byte) (*Event, error) {
 
 // OrderCreatedData is the payload for TopicOrderCreated events.
 type OrderCreatedData struct {
-	OrderID     string       `json:"order_id"`
-	UserID      string       `json:"user_id"`
-	Items       []OrderItem  `json:"items"`
-	TotalAmount float64      `json:"total_amount"`
-	Currency    string       `json:"currency"`
+	OrderID     string      `json:"order_id"`
+	UserID      string      `json:"user_id"`
+	Items       []OrderItem `json:"items"`
+	TotalAmount float64     `json:"total_amount"`
+	Currency    string      `json:"currency"`
 }
 
 type OrderItem struct {
@@ -130,11 +130,11 @@ type InventoryReservedData struct {
 
 // PaymentSucceededData is the payload for TopicPaymentSucceeded events.
 type PaymentSucceededData struct {
-	OrderID       string  `json:"order_id"`
-	PaymentID     string  `json:"payment_id"`
-	Amount        float64 `json:"amount"`
-	Currency      string  `json:"currency"`
-	GatewayTxnID  string  `json:"gateway_txn_id"`
+	OrderID      string  `json:"order_id"`
+	PaymentID    string  `json:"payment_id"`
+	Amount       float64 `json:"amount"`
+	Currency     string  `json:"currency"`
+	GatewayTxnID string  `json:"gateway_txn_id"`
 }
 
 // PaymentFailedData is the payload for TopicPaymentFailed events.
@@ -150,14 +150,14 @@ type PaymentFailedData struct {
 // Written in the same DB transaction as the business data change.
 // Debezium CDC connector reads this table and publishes to Kafka.
 type OutboxEntry struct {
-	ID              string    `json:"id" db:"id"`
-	AggregateType   string    `json:"aggregate_type" db:"aggregate_type"`
-	AggregateID     string    `json:"aggregate_id" db:"aggregate_id"`
-	EventType       string    `json:"event_type" db:"event_type"`
-	Payload         []byte    `json:"payload" db:"payload"`
-	CorrelationID   string    `json:"correlation_id" db:"correlation_id"`
-	CreatedAt       time.Time `json:"created_at" db:"created_at"`
-	Published       bool      `json:"published" db:"published"`
+	ID            string    `json:"id" db:"id"`
+	AggregateType string    `json:"aggregate_type" db:"aggregate_type"`
+	AggregateID   string    `json:"aggregate_id" db:"aggregate_id"`
+	EventType     string    `json:"event_type" db:"event_type"`
+	Payload       []byte    `json:"payload" db:"payload"`
+	CorrelationID string    `json:"correlation_id" db:"correlation_id"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	Published     bool      `json:"published" db:"published"`
 }
 
 // ---- Producer/Consumer Interfaces ----
