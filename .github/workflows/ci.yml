@@ -48,6 +48,12 @@ jobs:
           protoc --go_out=. --go_opt=module=digital-metro/ecomm_java \
             --go-grpc_out=. --go-grpc_opt=module=digital-metro/ecomm_java \
             proto/*/*.proto
+          for svc in services/*/; do
+            if [ -f "${svc}go.mod" ]; then
+              echo "Resolving dependencies in ${svc}"
+              (cd "${svc}" && go mod download)
+            fi
+          done
 
       - name: Run go vet
         run: |
@@ -109,6 +115,12 @@ jobs:
           protoc --go_out=. --go_opt=module=digital-metro/ecomm_java \
             --go-grpc_out=. --go-grpc_opt=module=digital-metro/ecomm_java \
             proto/*/*.proto
+          for svc in services/*/; do
+            if [ -f "${svc}go.mod" ]; then
+              echo "Resolving dependencies in ${svc}"
+              (cd "${svc}" && go mod download)
+            fi
+          done
 
       - name: Build ${{ matrix.service }}
         working-directory: services/${{ matrix.service }}
@@ -155,6 +167,12 @@ jobs:
           protoc --go_out=. --go_opt=module=digital-metro/ecomm_java \
             --go-grpc_out=. --go-grpc_opt=module=digital-metro/ecomm_java \
             proto/*/*.proto
+          for svc in services/*/; do
+            if [ -f "${svc}go.mod" ]; then
+              echo "Resolving dependencies in ${svc}"
+              (cd "${svc}" && go mod download)
+            fi
+          done
 
       - name: Run tests with coverage
         working-directory: services/${{ matrix.service }}
